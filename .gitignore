@@ -1,0 +1,19 @@
+
+# Mac / OSX
+.DS_Store
+*/.DS_Store
+
+# Distributions
+.Python
+
+# Other
+.Rdata
+.idea/
+.ipynb_checkpoints
+.Rproj.user
+.Rapp.history
+.Rhistory
+Goet_Scripts/.Rhistory
+
+
+

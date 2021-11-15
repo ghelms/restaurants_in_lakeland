@@ -60,7 +60,7 @@ info = False
 many = False
 my_file = open("url_list.txt", "r")
 urls = my_file. readlines()
-urls = urls[37:95]
+urls = urls
 
 options = Options()
 options.headless=True

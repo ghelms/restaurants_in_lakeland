@@ -1,0 +1,28 @@
+---
+title: "modelling"
+author: "Gustav Helms"
+date: "11/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#loading packages
+pacman::p_load(tidyverse)
+```
+
+```{r}
+# Loading the data
+df <- read_csv("TripReviews.csv", col_names = c("Restaurant", "Username", "ratingDate", "text", "rating"))
+```
+
+```{r}
+# Removing duplicates
+df <-   df %>% distinct(text, .keep_all = TRUE)
+
+unique(df$Restaurant)
+```
+

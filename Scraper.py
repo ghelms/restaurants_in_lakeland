@@ -4,60 +4,12 @@ import csv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import time
-import sys
-import argparse
-
 
 
 pathToReviews = "TripReviews.csv"
 pathToStoreInfo = "TripStoresInfo.csv"
 
-#webDriver init
 
-
-def scrapeRestaurantsUrls(tripURLs):
-    urls =[]
-    for url in tripURLs:
-        page = requests.get(url, timeout = 10)
-        soup = BeautifulSoup(page.text, 'html.parser')
-        results = soup.find('div', class_='_1kXteagE')
-        stores = results.find_all('div', class_='wQjYiB7z')
-        for store in stores:
-            unModifiedUrl = str(store.find('a', href=True)['href'])
-            urls.append('https://www.tripadvisor.com'+unModifiedUrl)            
-    return urls
-
-def scrapeRestaurantInfo(url):
-    print(url)
-    page = requests.get(url, timeout = 10)
-    soup = BeautifulSoup(page.text, 'html.parser')
-    storeName = soup.find('h1', class_='_3a1XQ88S').text
-    avgRating = soup.find('span', class_='r2Cf69qf').text.strip()
-    storeAddress = soup.find('div', class_= '_2vbD36Hr _36TL14Jn').find('span', class_='_2saB_OSe').text.strip()
-    noReviews = soup.find('a', class_='_10Iv7dOs').text.strip().split()[0]
-    with open(pathToStoreInfo, mode='a', encoding="utf-8") as trip:
-        data_writer = csv.writer(trip, delimiter = ',', quotechar = '"', quoting = csv.QUOTE_MINIMAL)
-        data_writer.writerow([storeName, storeAddress, avgRating, noReviews])
-
-
-#parser = argparse.ArgumentParser()
-#parser.add_argument('--url', required=True, help ='need starting url')
-#parser.add_argument('-i', '--info', action='store_true', help="Collects restaurant's info")
-#parser.add_argument('-m', '--many', action='store_true', help="Collects whole area info")
-#args = parser.parse_args()
-#startingUrl = args.url
-#if args.info:
-#    info = True
-#else:
-#    info = False
-#if args.many:
-#    urls = scrapeRestaurantsUrls([startingUrl])
-#else:
-#    urls = [startingUrl]
-
-
-info = False
-many = False
 my_file = open("url_list.txt", "r")
 urls = my_file. readlines()
 urls = urls
@@ -72,9 +24,6 @@ i = 1
 for url in urls:
     print("[ ] scraping {}Number: {} out of {}".format(url, i, len(urls)))
     i += 1
-    #if you want to scrape restaurants info
-    if info == True:
-        scrapeRestaurantInfo(url)
 
     nextPage = True
     while nextPage:

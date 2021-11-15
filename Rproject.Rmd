@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #loading packages
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stopwords)
 ```
 
 ```{r}
@@ -24,5 +24,20 @@ df <- read_csv("TripReviews.csv", col_names = c("Restaurant", "Username", "ratin
 df <-   df %>% distinct(text, .keep_all = TRUE)
 
 unique(df$Restaurant)
+```
+
+```{r}
+corpuseret <- corpus(df$text)
+toks_news <- tokens(corpuseret, remove_punct = TRUE, remove_numbers = TRUE, remove_symbol = TRUE)
+toks_news <- tokens_remove(toks_news, pattern = c(stopwords("da")))
+dfmat_news <- dfm(toks_news) %>% 
+              dfm_trim(min_termfreq = 0.8, termfreq_type = "quantile",
+                       max_docfreq = 0.1, docfreq_type = "prop")
+```
+
+```{r}
+tmod_lda <- textmodel_lda(dfmat_news, k = 5)
+
+terms(tmod_lda, 20)
 ```
 

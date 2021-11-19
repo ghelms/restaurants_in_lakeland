@@ -134,7 +134,7 @@ summarised %>% filter(rating_level != "neutral") %>%
   ggplot()+
   aes(x = as.factor(Category), y = value, fill = rating_level)+
   geom_bar(stat="identity", position = "dodge")+
-  scale_fill_manual(values = wesanderson::wes_palette("Moonrise2"))+
+  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling2"))+
   labs(x = "", y = "LDA score", title = "")+
   theme_minimal()
 

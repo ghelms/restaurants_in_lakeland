@@ -11,12 +11,20 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #loading packages
-pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stopwords, stringdist)
+pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stringdist, stopwords)
 ```
 
 ```{r}
 # Loading the data
 df <- read_csv("TripReviews.csv", col_names = c("Restaurant", "Username", "ratingDate", "text", "rating"))
+
+# Loading list of stopwords from github
+stopword_path = "https://gist.githubusercontent.com/berteltorp/0cf8a0c7afea7f25ed754f24cfc2467b/raw/305d8e3930cc419e909d49d4b489c9773f75b2d6/stopord.txt"
+# loading the list
+stopword <- read_delim(stopword_path, delim = "\n", col_names = "word")
+# Converting to a list
+stopword_da <- stopword$word
+stopword_en <- c(stopwords("en"), "also","can","well")
 ```
 
 
@@ -58,20 +66,77 @@ df <- df %>% mutate(
 
 # ---------------------------------- Analysis ----------------------------------------------
 ```{r}
+# creating corpus object
 corpuseret <- corpus(df$text)
-toks_news <- tokens(corpuseret, remove_punct = TRUE, remove_numbers = TRUE, remove_symbol = TRUE)
-toks_news <- tokens_remove(toks_news, pattern = c(stopwords("da")))
-dfmat_news <- dfm(toks_news) %>% 
+# Vectorizing the words into tokens while removing punctations, numbers and other symbols
+toks <- tokens(corpuseret, remove_punct = TRUE, remove_numbers = TRUE, remove_symbol = TRUE) %>% 
+  # Making all tokens only lowercase
+  tokens_tolower() %>% 
+  # Removing danish stopwords
+  tokens_remove(pattern = c(stopword_da, stopword_en))
+
+# Creating a data frame matrix object that can be feeded to quanteda textmodels
+dfmat <- dfm(toks) %>% 
+              # Removing very frequent terms as well as very infrequent terms
               dfm_trim(min_termfreq = 0.8, termfreq_type = "quantile",
                        max_docfreq = 0.1, docfreq_type = "prop")
+
 ```
 
 ```{r}
-tmod_lda <- textmodel_lda(dfmat_news, k = 5)
+list_of_words <- c()
 
-terms(tmod_lda, 20)
+for(i in seq(length(toks))){
+  list_of_words <- c(list_of_words, toks[[i]])
+}
+
+
+as.tibble(x = list_of_words) %>% count(value) %>% arrange(-n)
 ```
+
+
 ```{r}
+# Creating a dictionary
+dict_topic <- dictionary(list(
+  Service = c("service*","betjening*", "friendly", "staff","venlig", "personale*", "qualit*","kvalitet*", "personale*", "tjener*"),
+  Food = c("mad*", "menu*", "ret*","smag*","dish*","qualit*","kvalitet*"),
+  Atmosphere = c("oplevelse","time*", "hyggelig","atmosphere*","atmosfære*","stemning*", "cozy*"),
+  Location = c("sted*", "place*", "hotel", "udsigt*", "tæt", "local*","lokal*"),
+  Food_items = c("sushi*", "burger*", "frokost*", "buffet*","pizza*", "coffee*", "brød*","vin*","dish*", "dinner*", "sandwich*", "lunch", "kaffe", "stjerneskud*", "tilbehør")
+))
+
+print(dict_topic)
+```
+
+```{r}
+tmod_slda <- textmodel_seededlda(dfmat, dictionary = dict_topic)
+
+terms(tmod_slda, 20)
+```
+
+```{r, fig.height=5, fig.width=7}
+# adding the lda estimates to the dataframe
+df <- cbind(df,as.data.frame(tmod_slda$theta)) 
+
+summarised <- df %>% mutate(
+  rating_level = ifelse(rating == 1 | rating == 2, "Low ratings", "High ratings"),
+  rating_level = ifelse(rating == 3, "neutral", rating_level)
+) %>% group_by(rating_level) %>% summarise(
+  Service = mean(Service),
+  Food = mean(Food),
+  Atmosphere = mean(Atmosphere),
+  Location = mean(Location),
+  Food_items = mean(Food_items)
+) %>% ungroup() 
+
+summarised %>% filter(rating_level != "neutral") %>% 
+  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Food_items"), names_to = "Category") %>% 
+  ggplot()+
+  aes(x = as.factor(Category), y = value, fill = rating_level)+
+  geom_bar(stat="identity", position = "dodge")+
+  scale_fill_manual(values = wesanderson::wes_palette("Moonrise2"))+
+  labs(x = "", y = "LDA score", title = "")+
+  theme_minimal()
 
 ```
 

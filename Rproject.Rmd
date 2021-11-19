@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #loading packages
-pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stopwords)
+pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stopwords, stringdist)
 ```
 
 ```{r}
@@ -19,13 +19,44 @@ pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stopwords)
 df <- read_csv("TripReviews.csv", col_names = c("Restaurant", "Username", "ratingDate", "text", "rating"))
 ```
 
-```{r}
-# Removing duplicates
-df <-   df %>% distinct(text, .keep_all = TRUE)
 
-unique(df$Restaurant)
+# -------------------------------------- Preproccesing -------------------------------------
+
+```{r}
+# Removing duplicates and removing all restaurants with less than 5 reviews
+df <-   df %>% distinct(text, .keep_all = TRUE) %>% group_by(Restaurant) %>% filter(n() >= 5)
 ```
 
+```{r, fig.height=15, fig.width=15}
+##################################### Correcting errors in restaurant names ############################
+# Creating stringdist matrix for restaurant names
+distmatrix<-stringdistmatrix(unique(df$Restaurant),unique(df$Restaurant), useNames=TRUE ,method = "osa")
+
+# Plotting heatmap of distances
+heatmap(distmatrix)
+```
+```{r}
+# Converting to dataframe
+distmatrixdf<- as.data.frame(distmatrix)
+
+# Making a row with restaurant names
+distmatrixdf$Restaurant_Name <- rownames(distmatrixdf)
+
+# Filtering out all links with less than 5 in distance and eyeballing the results to decide what links to merge
+dist <- distmatrixdf %>% pivot_longer(cols = everything(vars = distmatrixdf$Restaurant_Name)) %>% filter(value <= 5 & value != 0)
+
+# Correcting errors
+df <- df %>% mutate(
+  Restaurant = ifelse(Restaurant == "Brasserie Landal Sohojlandet", "Brasserie Landal Søhøjlandet", Restaurant),
+  Restaurant = ifelse(Restaurant == "Jensens Bofhus Silkeborg", "Jensens Bøfhus Silkeborg", Restaurant),
+  Restaurant = ifelse(Restaurant == "KiK", "Café KiK", Restaurant),
+  Restaurant = ifelse(Restaurant == "Cafe Den Go'e Fe Heksekosten", "Café Den Go'e Fe Heksekosten", Restaurant),
+  Restaurant = ifelse(Restaurant == "Traktorstedet Ludvigslyst", "Traktørstedet Ludvigslyst", Restaurant),
+  Restaurant = ifelse(Restaurant == "Traktorstedet Ludvigslyst", "Traktørstedet Ludvigslyst", Restaurant)
+)
+```
+
+# ---------------------------------- Analysis ----------------------------------------------
 ```{r}
 corpuseret <- corpus(df$text)
 toks_news <- tokens(corpuseret, remove_punct = TRUE, remove_numbers = TRUE, remove_symbol = TRUE)
@@ -39,5 +70,8 @@ dfmat_news <- dfm(toks_news) %>%
 tmod_lda <- textmodel_lda(dfmat_news, k = 5)
 
 terms(tmod_lda, 20)
+```
+```{r}
+
 ```
 

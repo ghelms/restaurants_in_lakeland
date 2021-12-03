@@ -6,11 +6,11 @@ from selenium.webdriver.chrome.options import Options
 import time
 
 
-my_file = open("url_lists/urls_Kolding.txt", "r")
-city = "Kolding"
+my_file = open("url_lists/urls_Roskilde.txt", "r")
+city = "Roskilde"
 
 urls = my_file. readlines()
-urls = urls#[85:120]
+urls = urls
 
 pathToReviews = "./reviews/TripReviews_{}.csv".format(city)
 pathToStoreInfo = "./reviews/TripStoresInfo.csv"
@@ -41,7 +41,10 @@ for url in urls:
                 pass
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         #Store name
-        storeName = soup.find('h1', class_='fHibz').get_text(strip=True)
+        try:
+            storeName = soup.find('h1', class_='fHibz').get_text(strip=True)
+        except:
+            break
         #Reviews
         results = soup.find('div', class_='listContainer hide-more-mobile')
         try:

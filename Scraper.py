@@ -6,13 +6,14 @@ from selenium.webdriver.chrome.options import Options
 import time
 
 
-pathToReviews = "TripReviews.csv"
-pathToStoreInfo = "TripStoresInfo.csv"
+my_file = open("url_lists/urls_Kolding.txt", "r")
+city = "Kolding"
 
-
-my_file = open("url_list.txt", "r")
 urls = my_file. readlines()
-urls = urls
+urls = urls#[85:120]
+
+pathToReviews = "./reviews/TripReviews_{}.csv".format(city)
+pathToStoreInfo = "./reviews/TripStoresInfo.csv"
 
 options = Options()
 options.headless=True
@@ -40,7 +41,7 @@ for url in urls:
                 pass
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         #Store name
-        storeName = soup.find('h1', class_='fHibz').text
+        storeName = soup.find('h1', class_='fHibz').get_text(strip=True)
         #Reviews
         results = soup.find('div', class_='listContainer hide-more-mobile')
         try:
@@ -63,7 +64,7 @@ for url in urls:
                     reviewerUsername = reviewerUsername.select('div > div')[0].get_text(strip=True)
                     rating = review.find('div', class_='ui_column is-9').findChildren('span')
                     rating = str(rating[0]).split('_')[3].split('0')[0]
-                    data_writer.writerow([storeName, reviewerUsername, ratingDate, reviewText, rating])
+                    data_writer.writerow([storeName, reviewerUsername, ratingDate, reviewText, rating, city])
         except:
             pass
         #Go to next page if exists

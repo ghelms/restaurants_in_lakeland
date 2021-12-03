@@ -91,7 +91,7 @@ for(i in seq(length(toks))){
 }
 
 
-as.tibble(x = list_of_words) %>% count(value) %>% arrange(-n)
+hep <- as.tibble(x = list_of_words) %>% count(value) %>% arrange(-n)
 ```
 
 
@@ -102,7 +102,8 @@ dict_topic <- dictionary(list(
   Food = c("mad*", "menu*", "ret*","smag*","dish*","qualit*","kvalitet*"),
   Atmosphere = c("oplevelse","time*", "hyggelig","atmosphere*","atmosfære*","stemning*", "cozy*"),
   Location = c("sted*", "place*", "hotel", "udsigt*", "tæt", "local*","lokal*"),
-  Food_items = c("sushi*", "burger*", "frokost*", "buffet*","pizza*", "coffee*", "brød*","vin*","dish*", "dinner*", "sandwich*", "lunch", "kaffe", "stjerneskud*", "tilbehør")
+  #Food_items = c("sushi*", "burger*", "frokost*", "buffet*","pizza*", "coffee*", "brød*","vin*","dish*", "dinner*", "sandwich*", "lunch", "kaffe", "stjerneskud*", "tilbehør"),
+  Price = c("pris*", "pebret*","dyr*","billig*","betal*","regning*")
 ))
 
 print(dict_topic)
@@ -113,7 +114,7 @@ tmod_slda <- textmodel_seededlda(dfmat, dictionary = dict_topic)
 
 terms(tmod_slda, 20)
 ```
-
+# ---------------- VISUALIZING on geographical area ----------------------------
 ```{r, fig.height=5, fig.width=7}
 # adding the lda estimates to the dataframe
 df <- cbind(df,as.data.frame(tmod_slda$theta)) 
@@ -121,22 +122,58 @@ df <- cbind(df,as.data.frame(tmod_slda$theta))
 summarised <- df %>% mutate(
   rating_level = ifelse(rating == 1 | rating == 2, "Low ratings", "High ratings"),
   rating_level = ifelse(rating == 3, "neutral", rating_level)
-) %>% group_by(rating_level) %>% summarise(
-  Service = mean(Service),
-  Food = mean(Food),
-  Atmosphere = mean(Atmosphere),
-  Location = mean(Location),
-  Food_items = mean(Food_items)
-) %>% ungroup() 
+) 
 
 summarised %>% filter(rating_level != "neutral") %>% 
-  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Food_items"), names_to = "Category") %>% 
+  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
   ggplot()+
-  aes(x = as.factor(Category), y = value, fill = rating_level)+
-  geom_bar(stat="identity", position = "dodge")+
-  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling2"))+
+  aes(x = Category, y = value, fill = rating_level)+
+  stat_summary(fun = "mean", geom = "bar", position = "dodge")+
+  stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
+  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+
   labs(x = "", y = "LDA score", title = "")+
   theme_minimal()
 
 ```
+# ----------------------------------------- VISUALIZING at restaurant level -------------------------------
+
+```{r}
+# CHOOSE RESTAURANT TO VISUALIZE
+restaurants <- c("Burger King", "Brasserie Landal Søhøjlandet")
+
+df %>% filter(Restaurant %in% restaurants) %>% 
+  ggplot()+
+  aes(x = Restaurant, y = rating, fill = Restaurant)+
+  stat_summary(fun = "mean", geom = "bar")+
+  stat_summary(fun = "mean", geom = "point", color = "black", size = 1)+
+  stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
+  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+#, n = 82, type = "continuous"))+
+  labs(x = "", y = "Ratings", title = "")+
+  ylim(0,5)+
+  theme_minimal()+
+  theme(#legend.position = "none", 
+        axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+# VISUALIZING THE CONTENT OF THE RATINGS
+summarised %>% filter(rating_level != "neutral" & Restaurant %in% restaurants) %>% 
+  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
+  ggplot()+
+  aes(x = Category, y = value, fill = rating_level)+
+  stat_summary(fun = "mean", geom = "bar", position = "dodge")+
+  stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
+  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+
+  facet_wrap(~Restaurant, nrow = 1)+
+  labs(x = "", y = "LDA score", title = "")+
+  theme_minimal()
+
+```
+
+
+
+
+
+
+
 

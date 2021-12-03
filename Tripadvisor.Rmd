@@ -23,3 +23,19 @@ getwd()
 data <- read_csv("./TripReviews.csv", col_names = c("Restaurant", "Username", "ratingDate", "text", "rating"))
 ```
 
+
+```{r}
+length(unique(data1$Restaurant))
+
+length(unique(df$Restaurant))
+
+
+
+
+?everything
+
+```
+
+
+
+

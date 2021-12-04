@@ -11,12 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 #loading packages
-pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stringdist, stopwords)
+pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stringdist, stopwords, lme4)
 ```
 
 ```{r}
 # Loading the data
-df <- read_csv("TripReviews.csv", col_names = c("Restaurant", "Username", "ratingDate", "text", "rating"))
+files <- list.files(path = "reviews/", pattern = "*.csv", full.names = T)
+df <- files %>% 
+  map_df(~read_csv(file = .x, col_names = c("Restaurant", "Username", "ratingDate", "text", "rating", "city")))
 
 # Loading list of stopwords from github
 stopword_path = "https://gist.githubusercontent.com/berteltorp/0cf8a0c7afea7f25ed754f24cfc2467b/raw/305d8e3930cc419e909d49d4b489c9773f75b2d6/stopord.txt"
@@ -27,6 +29,16 @@ stopword_da <- stopword$word
 stopword_en <- c(stopwords("en"), "also","can","well")
 ```
 
+```{r}
+####################### Inspecting the data ####################
+# Number of restaurants pr. city
+df %>% group_by(city) %>% summarise(n_restaurants = length(unique(Restaurant))) %>% arrange(-n_restaurants)
+
+# Inspecting how many reviews there are for each city. Before and after filtering out restaurants with less than 5 reviews. 
+df %>% group_by(city) %>% count(Restaurant) %>% arrange(n) %>% summarise(sum = sum(n))
+df %>% group_by(city) %>% count(Restaurant) %>% arrange(n) %>% filter(n > 5) %>% summarise(sum = sum(n))
+
+```
 
 # -------------------------------------- Preproccesing -------------------------------------
 
@@ -37,35 +49,142 @@ df <-   df %>% distinct(text, .keep_all = TRUE) %>% group_by(Restaurant) %>% fil
 
 ```{r, fig.height=15, fig.width=15}
 ##################################### Correcting errors in restaurant names ############################
-# Creating stringdist matrix for restaurant names
-distmatrix<-stringdistmatrix(unique(df$Restaurant),unique(df$Restaurant), useNames=TRUE ,method = "osa")
+# Needs to be done for each city ... creating function to find distance
+distance_maker <- function(data, c){
+  # Making subset of data
+  subset <- data %>% filter(city == c)
+  
+  # Heatmap function. Cool for illustrating
+  #heatmap(distmatrix)
+  
+  # Creating stringdist matrix
+  distmatrix<-stringdistmatrix(unique(subset$Restaurant),unique(subset$Restaurant), useNames=TRUE ,method = "osa")
+  # Converting to data frame
+  distmatrixdf<- as.data.frame(distmatrix)
+  # Making a row with restaurant names
+  distmatrixdf$Restaurant <- rownames(distmatrixdf)
+  # Filtering out all links with less than 5 in distance and eyeballing the results to decide what links to merge
+  dist <- distmatrixdf %>% 
+    pivot_longer(cols = everything(vars = distmatrixdf$Restaurant)) %>% 
+    filter(value <=5 & value != 0) %>% arrange(value)
+  
+  # Adding number of restaurants with each name
+  test1 <- subset %>% group_by(Restaurant) %>% count() 
+  test2 <- left_join(dist, test1) %>% rename(n_left = n)
+  test3 <- test1 %>% rename(name = Restaurant)
+  dist <- left_join(test2, test3) %>% rename(n_right = n)
+  
+  # Returning the dist data frame
+  return(dist)
+}
 
-# Plotting heatmap of distances
-heatmap(distmatrix)
 ```
+
 ```{r}
-# Converting to dataframe
-distmatrixdf<- as.data.frame(distmatrix)
+# Inspecting distance for the different cities
+dist_kolding <- distance_maker(df, "Kolding")
 
-# Making a row with restaurant names
-distmatrixdf$Restaurant_Name <- rownames(distmatrixdf)
+dist_aarhus <- distance_maker(df, "Aarhus")
 
-# Filtering out all links with less than 5 in distance and eyeballing the results to decide what links to merge
-dist <- distmatrixdf %>% pivot_longer(cols = everything(vars = distmatrixdf$Restaurant_Name)) %>% filter(value <= 5 & value != 0)
+dist_aalborg <- distance_maker(df, "Aalborg")
 
+dist_roskilde <- distance_maker(df, "Roskilde")
+
+dist_horsens <- distance_maker(df,"Horsens")
+
+dist_randers <- distance_maker(df,"Randers")
+
+dist_esbjerg <- distance_maker(df,"Esbjerg")
+
+dist_odense <- distance_maker(df, "Odense")
+```
+
+
+```{r}
 # Correcting errors
 df <- df %>% mutate(
-  Restaurant = ifelse(Restaurant == "Brasserie Landal Sohojlandet", "Brasserie Landal Søhøjlandet", Restaurant),
-  Restaurant = ifelse(Restaurant == "Jensens Bofhus Silkeborg", "Jensens Bøfhus Silkeborg", Restaurant),
-  Restaurant = ifelse(Restaurant == "KiK", "Café KiK", Restaurant),
-  Restaurant = ifelse(Restaurant == "Cafe Den Go'e Fe Heksekosten", "Café Den Go'e Fe Heksekosten", Restaurant),
-  Restaurant = ifelse(Restaurant == "Traktorstedet Ludvigslyst", "Traktørstedet Ludvigslyst", Restaurant),
-  Restaurant = ifelse(Restaurant == "Traktorstedet Ludvigslyst", "Traktørstedet Ludvigslyst", Restaurant)
+  # SILKEBORG
+  Restaurant = Restaurant %>% 
+    str_replace("Brasserie Landal Sohojlandet", "Brasserie Landal Søhøjlandet") %>% 
+    str_replace("Jensens Bofhus Silkeborg", "Jensens Bøfhus Silkeborg") %>% 
+    str_replace("KiK", "Café KiK") %>% 
+    str_replace("Cafe Den Go'e Fe Heksekosten", "Café Den Go'e Fe Heksekosten") %>% 
+    str_replace("Traktorstedet Ludvigslyst", "Traktørstedet Ludvigslyst") %>% 
+  
+  # KOLDING
+    str_replace("Madkaelderen Koldinghus", "Madkælderen Koldinghus") %>% 
+    str_replace("Cafe Loverodde", "Café Løverodde") %>% 
+    str_replace("Tobbers Foodbar","Tobbers Madbar") %>% 
+  
+  # AARHUS
+    str_replace("Caffe Ispirazione","Caffè Ispirazione") %>% 
+    str_replace("Taeaterbodega","Teaterbodega") %>% 
+    str_replace("De Fyrretyve Rovere","De Fyrretyve Røvere") %>% 
+    str_replace("The Corner Cafe","The Corner Café") %>% 
+    str_replace("Cafe Opera","Café Opera") %>% 
+    str_replace("Moef","Møf") %>% 
+    str_replace("Restaurant Skovmoellen","Restaurant Skovmøllen") %>% 
+    str_replace("Broedrenes Original","Brødrenes Original") %>% 
+    str_replace("KØN Cafe","KØN café") %>% 
+    str_replace("Jensens Bøfhus Århus (Rosenkrantzgade)","Jensens Bøfhus Aarhus (Rosenkrantzgade)") %>% 
+    str_replace("Carls Jr.","Carl's Jr") %>% 
+    str_replace("Restaurant Egaa Marina","Restaurant Egå Marina") %>% 
+    str_replace("Sevags Graekeren","Sevag's Grækeren") %>% 
+  
+  # AALBORG
+    str_replace("Sticchi´s", "Sticchi's") %>% 
+    str_replace("Mumbai Cafe og Take Away", "Mumbai Cafè og Take Away") %>% 
+    str_replace("Karma Sushi Aalborg", "Karma Sushi - Aalborg") %>% 
+    str_replace("Soegaards Bryghus","Søgaards Bryghus") %>% 
+    str_replace("Duus Vinkjaelder","Duus Vinkjælder") %>% 
+    str_replace("Cafe Vesteraa", "Cafe Vesterå") %>% 
+    str_replace("Jensens Boefhus Aalborg (Nytorv)","Jensens Bøfhus Aalborg (Nytorv)") %>% 
+    str_replace("Restaurant Vestre Baadelaug","Restaurant Vestre Bådelaug") %>% 
+    str_replace("Azzurra Italian Restaurant", "Azzurra Italiensk Restaurant") %>% 
+    
+  # ROSKILDE
+    str_replace("Cafe Knarr","Café Knarr") %>% 
+    str_replace("Ostens Perle","Østens Perle") %>% 
+    str_replace("Restaurant Bryggergarden","Restaurant Bryggergården") %>% 
+    str_replace("Cafe Vivaldi","Café Vivaldi") %>% 
+    str_replace("Bodils Landkokken","Bodils Landkøkken") %>% 
+    str_replace("Raadhuskaelderen","Raadhuskælderen") %>% 
+    str_replace("King Running Sushi & Wok","King Running Sushi og Wok") %>% 
+  
+  # HORSENS
+    str_replace("Corfitz restaurant og bar","Corfitz Restaurant and bar") %>% 
+    
+  # RANDERS
+    str_replace("Cafe Jens Otto","Café Jens Otto") %>% 
+    str_replace("Restaurant Oestergade 1","Restaurant Østergade 1") %>% 
+    str_replace("Dit Smorrebrod","Dit Smørrebrød") %>% 
+    str_replace("Jensens Boefhus Randers","Jensens Bøfhus Randers") %>% 
+  
+  # ESBJERG
+    str_replace("Den Rode Okse","Den Røde Okse") %>% 
+    str_replace("Cafe Vivaldi - Broen Shopping","Café Vivaldi - Broen Shopping") %>% 
+    str_replace("cafe kærlig","Cafe Kærlig") %>% 
+    str_replace("Jensens Boefhus Esbjerg Nord","Jensens Bøfhus Esbjerg Nord") %>% 
+    str_replace("Restaurant Backhaus ApS","Restaurant Backhaus") %>% 
+    str_replace("Vaegterkaelderen","Vægterkælderen") %>% 
+    
+  # Odense
+    str_replace("Cafe Skt Gertruds","Cafe Skt Gertrud") %>% 
+    str_replace("La Melisa Restaurant og Bøfhus","La Melisa Restaurant og Bofhus") %>%
+    str_replace("Under Lindetraeet","Under Lindetræet") %>% 
+    str_replace("Druen & Boennen","Druen & Bønnen") %>% 
+    str_replace("Den Grimme Aelling Restaurant","Den Grimme Ælling Restaurant") %>% 
+    str_replace("Café Kraez","Café Kræz") %>% 
+    str_replace("MASH Odense","Mash Odense") %>% 
+    str_replace("bar'sushi Odense","Bar Sushi Odense") 
 )
 ```
 
+
+
 # ---------------------------------- Analysis ----------------------------------------------
 ```{r}
+################################ TOKENIZING THE TEXT ###################################
 # creating corpus object
 corpuseret <- corpus(df$text)
 # Vectorizing the words into tokens while removing punctations, numbers and other symbols
@@ -83,20 +202,20 @@ dfmat <- dfm(toks) %>%
 
 ```
 
-```{r}
-list_of_words <- c()
 
+```{r}
+# Creating a list for the most frequent words to create a dictionary for the seeded LDA analysis
+list_of_words <- c()
 for(i in seq(length(toks))){
   list_of_words <- c(list_of_words, toks[[i]])
 }
-
 
 hep <- as.tibble(x = list_of_words) %>% count(value) %>% arrange(-n)
 ```
 
 
 ```{r}
-# Creating a dictionary
+# Creating the dictionary
 dict_topic <- dictionary(list(
   Service = c("service*","betjening*", "friendly", "staff","venlig", "personale*", "qualit*","kvalitet*", "personale*", "tjener*"),
   Food = c("mad*", "menu*", "ret*","smag*","dish*","qualit*","kvalitet*"),
@@ -109,33 +228,71 @@ dict_topic <- dictionary(list(
 print(dict_topic)
 ```
 
+
+
+
 ```{r}
+# Conducting the seeded lda analysis
 tmod_slda <- textmodel_seededlda(dfmat, dictionary = dict_topic)
 
+# adding the lda estimates to the dataframe
+df <- cbind(df,as.data.frame(tmod_slda$theta))
+
+# Printing the most frequent terms within each category
 terms(tmod_slda, 20)
 ```
-# ---------------- VISUALIZING on geographical area ----------------------------
+# ----------------------------- VISUALIZATION ----------------------------
+## ------------------------- FIGURE 1 - THE RATINGS OVERALL -------------------
 ```{r, fig.height=5, fig.width=7}
-# adding the lda estimates to the dataframe
-df <- cbind(df,as.data.frame(tmod_slda$theta)) 
-
-summarised <- df %>% mutate(
+# Creating rating level variable
+df <- df %>% mutate(
   rating_level = ifelse(rating == 1 | rating == 2, "Low ratings", "High ratings"),
   rating_level = ifelse(rating == 3, "neutral", rating_level)
 ) 
 
-summarised %>% filter(rating_level != "neutral") %>% 
+df %>% filter(rating_level != "neutral") %>% 
   pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
   ggplot()+
   aes(x = Category, y = value, fill = rating_level)+
   stat_summary(fun = "mean", geom = "bar", position = "dodge")+
   stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
   scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+
-  labs(x = "", y = "LDA score", title = "")+
+  labs(x = "", y = "LDA score", title = "Overall ratings")+
   theme_minimal()
 
 ```
-# ----------------------------------------- VISUALIZING at restaurant level -------------------------------
+## --------------------------- FIGURE 2 - VISUALIZING AT GEOGRAPHICAL LEVEL -------------------------------
+```{r}
+df %>% filter(rating_level != "neutral") %>% 
+  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
+  ggplot()+
+  aes(x = Category, y = value, fill = rating_level)+
+  stat_summary(fun = "mean", geom = "bar", position = "dodge")+
+  stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
+  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+
+  facet_wrap(~city)+
+  labs(x = "", y = "LDA score", title = "Comparrison of ratings between cities")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+## --------------------------- FIGURE 3 - VISUALIZING GEOGRAPHICAL MEAN RATINGS -------------------------------
+```{r}
+df %>% 
+  ggplot()+
+  aes(x = city, y = rating, fill = city)+
+  stat_summary(fun = "mean", geom = "bar")+
+  stat_summary(fun = "mean", geom = "point", color = "black", size = 1)+
+  stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
+  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1", n = 9, type = "continuous"))+
+  labs(x = "", y = "Ratings", title = "Mean rating per city")+
+  ylim(0,5)+
+  theme_minimal()+
+  theme(legend.position = "none")
+```
+
+
+## --------------------------- FIGURE 4 - VISUALIZING COMPARISSON OF RESTAURANTS -------------------------------
 
 ```{r}
 # CHOOSE RESTAURANT TO VISUALIZE
@@ -148,12 +305,14 @@ df %>% filter(Restaurant %in% restaurants) %>%
   stat_summary(fun = "mean", geom = "point", color = "black", size = 1)+
   stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
   scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+#, n = 82, type = "continuous"))+
-  labs(x = "", y = "Ratings", title = "")+
+  labs(x = "", y = "Ratings", title = "Mean rating for restaurants")+
   ylim(0,5)+
   theme_minimal()+
-  theme(#legend.position = "none", 
+  theme(legend.position = "none", 
         axis.text.x = element_text(angle = 90))
 ```
+
+## --------------------------- FIGURE 5 - VISUALIZING THE CONTENT OF THE RATINGS -------------------------------
 
 ```{r}
 # VISUALIZING THE CONTENT OF THE RATINGS
@@ -170,8 +329,25 @@ summarised %>% filter(rating_level != "neutral" & Restaurant %in% restaurants) %
 
 ```
 
+# ----------------------- MODELLING - DONT KNOW IF THIS IS CORRECT -------------------------------------------------
+
+```{r}
+# Trying to model whether there is a difference between cities
+model_df <- df %>% filter(rating_level != "neutral") %>% 
+  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category")
+
+# Doing an lm
+m1 <- lm(value ~ 1 + city + Category + rating_level, data = model_df)
+summary(m1)
+```
 
 
+```{r}
+# Doing an lmer
+m2 <- lmer(value ~ 1 + city + Category + (1 + city + Category|rating_level), data = model_df)
+
+
+```
 
 
 

@@ -5,8 +5,8 @@ from selenium.webdriver.chrome.options import Options
 import time
 
 # Link to scrape
-url = "https://www.tripadvisor.dk/Restaurants-g227593-Horsens_East_Jutland_Jutland.html"
-city = "Horsens"
+url = "https://www.tripadvisor.dk/Restaurants-g189530-Aarhus_East_Jutland_Jutland.html"
+city = "Aarhus"
 
 # Path to store url
 url_filepath = "./url_lists/urls_{}.txt".format(city)

@@ -19,7 +19,6 @@ pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stringdist, sto
 files <- list.files(path = "reviews/", pattern = "*.csv", full.names = T)
 df <- files %>% 
   map_df(~read_csv(file = .x, col_names = c("Restaurant", "Username", "ratingDate", "text", "rating", "city")))
-
 # Loading list of stopwords from github
 stopword_path = "https://gist.githubusercontent.com/berteltorp/0cf8a0c7afea7f25ed754f24cfc2467b/raw/305d8e3930cc419e909d49d4b489c9773f75b2d6/stopord.txt"
 # loading the list
@@ -97,6 +96,8 @@ dist_randers <- distance_maker(df,"Randers")
 dist_esbjerg <- distance_maker(df,"Esbjerg")
 
 dist_odense <- distance_maker(df, "Odense")
+
+dist_københavn <- distance_maker(df, "København")
 ```
 
 
@@ -176,7 +177,72 @@ df <- df %>% mutate(
     str_replace("Den Grimme Aelling Restaurant","Den Grimme Ælling Restaurant") %>% 
     str_replace("Café Kraez","Café Kræz") %>% 
     str_replace("MASH Odense","Mash Odense") %>% 
-    str_replace("bar'sushi Odense","Bar Sushi Odense") 
+    str_replace("bar'sushi Odense","Bar Sushi Odense") %>% 
+  
+  # København
+    str_replace("Restaurant Schonneman", "Restaurant Schoenneman") %>% 
+    str_replace("Café Patina", "Cafe Patina") %>% 
+    str_replace("Höst", "Høst") %>% 
+    str_replace("Restaurant Grønnegade", "Restaurant Gronnegade") %>% 
+    str_replace("SimpleRAW", "simpleRAW") %>% 
+    str_replace("Det Lille Apotek","Det lille Apotek") %>% 
+    str_replace("Riz Raz","RizRaz") %>% 
+    str_replace("Københavner Cafeen", "Kobenhavner Cafeen") %>% 
+    str_replace("Restaurant Dada","Restauarant Dada") %>% 
+    str_replace("L'Education Nationale", "L'éducation Nationale") %>% 
+    str_replace("Cafe & Olhalle 1892","Cafe & Ølhalle 1892") %>% 
+    str_replace("Nyboders Kokken", "Nyboders Køkken") %>% 
+    str_replace("Café Victor", "Cafe Victor") %>% 
+    str_replace("Cock's & Cows Gl. Strand", "Cocks & Cows Gl. Strand") %>% 
+    str_replace("K-bar","K-Bar") %>% 
+    str_replace("Voraz Bar & Café","Voraz Bar & Cafe") %>% 
+    str_replace("Ristorante L'Imperatore","Ristorante L'imperatore") %>% 
+    str_replace("Café Gavlen", "Cafe Gavlen") %>% 
+    str_replace("Blue Bike Café", "Blue Bike Cafe") %>% 
+    str_replace("The South Indian Frederisberg","The South Indian Frederiksberg") %>% 
+    str_replace("Ølbaren", "Olbaren") %>% 
+    str_replace("AHAAA - Arabic Cuisine", "AHAAA -  Arabic Cuisine") %>% 
+    str_replace("Café Glyptoteket", "Cafe Glyptoteket") %>% 
+    str_replace("Hojbro Sandwich and Cafe", "Højbro Sandwich and Cafe") %>% 
+    str_replace("Lele Street Kitchen", "LeLe Street Kitchen") %>% 
+    str_replace("Brdr. Price Tivoli", "Brdr Price Tivoli") %>% 
+    str_replace("Café og Restaurant Ofelia", "Cafe og Restaurant Ofelia") %>% 
+    str_replace("Silom restaurant", "Silom Restaurant") %>% 
+    str_replace("Cafe Dalle Valle","Café Dalle Valle") %>% 
+    str_replace("Maltid","Måltid") %>% 
+    str_replace("Sushi-Tsukiji", "Sushi Tsukiji") %>% 
+    str_replace("Café Ermanno","Cafe Ermanno") %>% 
+    str_replace("Joe & the Juice", "Joe & The Juice") %>% 
+    str_replace("Cafe Moccador", "Café Moccador") %>% 
+    str_replace("Cafe Phenix", "Café Phenix") %>% 
+    str_replace("Meyer's deli","Meyer's Deli") %>% 
+    str_replace("Meyers Deli","Meyer's Deli") %>% 
+    str_replace("Food club","Food Club") %>% 
+    str_replace("Cafe Tænk", "Café Tænk") %>% 
+    str_replace("Café Phenix","Café Phønix") %>% 
+    str_replace("McDonalds","McDonald's") %>% 
+    str_replace("Smagsloeget (Vesterbro)", "Smagsløget (Vesterbro)") %>% 
+    str_replace("Sticks’n’Sushi","Sticks'n'Sushi") %>% 
+    str_replace("Restaurant Palaegade","Restaurant Palægade") %>%
+    str_replace("Christianshavns Faergecafé","Christianshavns Færgecafé") %>%
+    str_replace("Groed", "Grød") %>%
+    str_replace("Palae Bar","Palæ Bar") %>%
+    str_replace("SALT bar & restaurant","SALT Bar & Restaurant") %>%
+    str_replace("Doep", "Døp") %>%
+    str_replace("Restaurant Pilekaelderen", "Restaurant Pilekælderen") %>%
+    str_replace("Gorm's Magstraede", "Gorm's Magstræde") %>%
+    str_replace("Tivoli Hallen", "Tivolihallen") %>%
+    str_replace("Brooklyn Bar Koebenhavn", "Brooklyn Bar København") %>%
+    str_replace("Domhusets Smorrebrod","Domhusets Smørrebrød") %>%
+    str_replace("Boef & Ost", "Bøf & Ost") %>%
+    str_replace("Bjaelkehuset","Bjælkehuset") %>%
+    str_replace("Peter Beier Chocolate A/S","Peter Beier Chokolade A/S") %>%
+    str_replace("Boulebar Noerregade", "Boulebar Nørregade") %>%
+    str_replace("Durum Bar Noerrebro","Durum Bar Nørrebro") %>%
+    str_replace("Senza Nome - Italiensk Restaurant", "Senza Nome - Italian Restaurant") %>% 
+    str_replace("Dhaba Indian street food", "Dhaba Indian Street Food") %>% 
+    str_replace("Restaurant Fyrtoejet", "Restaurant Fyrtøjet") %>% 
+    str_replace("Garden Restaurant & Wine Bar", "Garden Restaurant & Vinbar")
 )
 ```
 
@@ -217,11 +283,10 @@ hep <- as.tibble(x = list_of_words) %>% count(value) %>% arrange(-n)
 ```{r}
 # Creating the dictionary
 dict_topic <- dictionary(list(
-  Service = c("service*","betjening*", "friendly", "staff","venlig", "personale*", "qualit*","kvalitet*", "personale*", "tjener*"),
+  Service = c("service*","betjening*", "friendly", "staff","venlig", "personale*", "qualit*","kvalitet*", "personale*", "tjener*", "waiter*","seat*"),
   Food = c("mad*", "menu*", "ret*","smag*","dish*","qualit*","kvalitet*"),
   Atmosphere = c("oplevelse","time*", "hyggelig","atmosphere*","atmosfære*","stemning*", "cozy*"),
   Location = c("sted*", "place*", "hotel", "udsigt*", "tæt", "local*","lokal*"),
-  #Food_items = c("sushi*", "burger*", "frokost*", "buffet*","pizza*", "coffee*", "brød*","vin*","dish*", "dinner*", "sandwich*", "lunch", "kaffe", "stjerneskud*", "tilbehør"),
   Price = c("pris*", "pebret*","dyr*","billig*","betal*","regning*")
 ))
 
@@ -240,10 +305,15 @@ df <- cbind(df,as.data.frame(tmod_slda$theta))
 
 # Printing the most frequent terms within each category
 terms(tmod_slda, 20)
+
+# Exporting the dataframe with the end results
+#write_csv(df,"./FINAL_df_with_lda_estimates.csv")
 ```
 # ----------------------------- VISUALIZATION ----------------------------
 ## ------------------------- FIGURE 1 - THE RATINGS OVERALL -------------------
 ```{r, fig.height=5, fig.width=7}
+df %>% read_csv("FINAL_df_with_lda_estimates.csv")
+
 # Creating rating level variable
 df <- df %>% mutate(
   rating_level = ifelse(rating == 1 | rating == 2, "Low ratings", "High ratings"),
@@ -265,6 +335,7 @@ df %>% filter(rating_level != "neutral") %>%
 ```{r}
 df %>% filter(rating_level != "neutral") %>% 
   pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
+  filter(Category == "Location") %>% 
   ggplot()+
   aes(x = Category, y = value, fill = rating_level)+
   stat_summary(fun = "mean", geom = "bar", position = "dodge")+

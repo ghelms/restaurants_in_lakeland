@@ -1,22 +1,19 @@
-# TripAdvisor-Review-Python-Scraper-Restaurants-2021 
-An implementation on python for scraping unique Restaurants's reviews or scraping a whole geographical area's reviews from TripAdvisor
+# Seeded LDA analysis of TripAdvisor reviews on Danish Restaurants.  
+An implementation on python for scraping unique Restaurants's reviews or scraping a whole geographical area's reviews from TripAdvisor along with a markdown that conducts a seeded LDA analysis of the scraped reviews. 
 
-Features implemented:
-1) Scrape only one restaurants's reviews and store it in csv. The feutures of each review are restaurant's name, username, date, review, rating 
-2) Scrape a whole area like a city(all restaurants in this region)
-3) Scrape basic info(Restaurant's name, Address, Average Rating, Number of reviews) of each restaurant and store it in another csv
-4) The click function to open the "more" button of the reviews
-5) The click function to change the page
+## How to use:
 
-How to use:
+The pipeline consists of three scripts that should be run in asscending order. 
 
-Directly from the terminal: 
-if you want to scrape only one specific restaurant pass the argument -i or -info if you want to keep the restaurants info  then give the tripadvisor url page of the restaurant 
-e.x. Python scraper.py -i --url "https://www.tripadvisor.com/Restaurant_Review-g189484-d2590994-Reviews-Marinos_Restaurant-Corinth_Corinthia_Region_Peloponnese.html"
+### 01_get_url.py
+- This script takes a city and a URL to a tripadvisor webpage for a specific city as input. The script will loop through all restaurants in a specific city and collect the URLs to the restaurants' TripAdvisor page. The URL links are stored in a .txt file. 
 
-if you want to scrape an area then search for that area in TripAdvisor's homepage, click on the restaurants tab of this area and copy the link. Pass -i or -info  for the restaurant info like before, pass the -m and then pass the previous copied link. e.x. Python scraper.py -m -i --url "https://www.tripadvisor.com/Restaurants-g189484-Corinth_Corinthia_Region_Peloponnese.html" .
-You need webChromeDriver downloaded in the same folder to make it work.
+### 02_scraper.py
+- This script loops through all .txt files made from the 01_get_url.py script. For each .txt file it loops through all restaurant links inside it and scrapes all reviews for each restaurant which is stored in .csv file. The script can take an input for which cities to not scrape. 
 
-If you have any feature requests, don't hesitate to contact me :)
+### 03_analysis.Rmd
+- In this markdown the analysis can be replicated. The script is divided into four parts. The first part is preprocessing. In the second part of the script the seeded LDA analysis are conducted. In the third part, the estimates from the LDA analysis are visualized. In the fourth part an lmer are conducted on the data. 
+
+If you have any feature requests, don't hesitate to contact us :)
 
 Use at own risk, it might violate TripAdvisor policies.

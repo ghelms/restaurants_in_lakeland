@@ -15,10 +15,12 @@ pacman::p_load(tidyverse, quanteda, quanteda.corpora, seededlda, stringdist, sto
 ```
 
 ```{r}
-# Loading the data
+# Listing file patlhs to load data from
 files <- list.files(path = "reviews/", pattern = "*.csv", full.names = T)
+# Loading the data
 df <- files %>% 
   map_df(~read_csv(file = .x, col_names = c("Restaurant", "Username", "ratingDate", "text", "rating", "city")))
+
 # Loading list of stopwords from github
 stopword_path = "https://gist.githubusercontent.com/berteltorp/0cf8a0c7afea7f25ed754f24cfc2467b/raw/305d8e3930cc419e909d49d4b489c9773f75b2d6/stopord.txt"
 # loading the list
@@ -271,17 +273,22 @@ dfmat <- dfm(toks) %>%
 
 ```{r}
 # Creating a list for the most frequent words to create a dictionary for the seeded LDA analysis
+# Empty list
 list_of_words <- c()
+
+# Looping through all words and appending them to the list
 for(i in seq(length(toks))){
   list_of_words <- c(list_of_words, toks[[i]])
 }
 
+# Counting the most frequent words and sort them in decending order
 hep <- as.tibble(x = list_of_words) %>% count(value) %>% arrange(-n)
 ```
 
 
 ```{r}
-# Creating the dictionary
+# Creating the dictionary for the seeded LDA analysis
+
 dict_topic <- dictionary(list(
   Service = c("service*","betjening*", "friendly", "staff","venlig", "personale*", "qualit*","kvalitet*", "personale*", "tjener*", "waiter*","seat*"),
   Food = c("mad*", "menu*", "ret*","smag*","dish*","qualit*","kvalitet*"),
@@ -290,6 +297,7 @@ dict_topic <- dictionary(list(
   Price = c("pris*", "pebret*","dyr*","billig*","betal*","regning*")
 ))
 
+# Printing the dict
 print(dict_topic)
 ```
 
@@ -310,16 +318,34 @@ terms(tmod_slda, 20)
 #write_csv(df,"./FINAL_df_with_lda_estimates.csv")
 ```
 # ----------------------------- VISUALIZATION ----------------------------
-## ------------------------- FIGURE 1 - THE RATINGS OVERALL -------------------
+
 ```{r, fig.height=5, fig.width=7}
+# Reading the data again
 df %>% read_csv("FINAL_df_with_lda_estimates.csv")
 
 # Creating rating level variable
 df <- df %>% mutate(
   rating_level = ifelse(rating == 1 | rating == 2, "Low ratings", "High ratings"),
   rating_level = ifelse(rating == 3, "neutral", rating_level)
-) 
+)
+```
 
+## ------------------------- FIGURE 1a - THE RATINGS OVERALL -------------------
+```{r, fig.height=5, fig.width=7}
+df %>% filter(rating_level != "neutral") %>% 
+  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
+  ggplot()+
+  aes(x = Category, y = value, fill = Category)+
+  stat_summary(fun = "mean", geom = "bar", position = "dodge")+
+  stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
+  scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1", n = 5, type = "continuous"))+
+  labs(x = "", y = "LDA score", title = "Mean LDA score for different topics")+
+  theme_minimal()+
+  theme(legend.position = "none")
+```
+
+## ------------------------- FIGURE 1b - THE RATINGS OVERALL -------------------
+```{r, fig.height=5, fig.width=7}
 df %>% filter(rating_level != "neutral") %>% 
   pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
   ggplot()+
@@ -327,7 +353,7 @@ df %>% filter(rating_level != "neutral") %>%
   stat_summary(fun = "mean", geom = "bar", position = "dodge")+
   stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
   scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+
-  labs(x = "", y = "LDA score", title = "Overall ratings")+
+  labs(x = "", y = "LDA score", title = "Mean LDA score for different topics at different rating level")+
   theme_minimal()
 
 ```
@@ -335,7 +361,6 @@ df %>% filter(rating_level != "neutral") %>%
 ```{r}
 df %>% filter(rating_level != "neutral") %>% 
   pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
-  filter(Category == "Location") %>% 
   ggplot()+
   aes(x = Category, y = value, fill = rating_level)+
   stat_summary(fun = "mean", geom = "bar", position = "dodge")+
@@ -367,7 +392,7 @@ df %>%
 
 ```{r}
 # CHOOSE RESTAURANT TO VISUALIZE
-restaurants <- c("Burger King", "Brasserie Landal Søhøjlandet")
+restaurants <- c("Restaurant Pondus")
 
 df %>% filter(Restaurant %in% restaurants) %>% 
   ggplot()+
@@ -387,37 +412,24 @@ df %>% filter(Restaurant %in% restaurants) %>%
 
 ```{r}
 # VISUALIZING THE CONTENT OF THE RATINGS
-summarised %>% filter(rating_level != "neutral" & Restaurant %in% restaurants) %>% 
+df %>% filter(rating_level != "neutral" & Restaurant %in% restaurants) %>% 
   pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category") %>%
   ggplot()+
   aes(x = Category, y = value, fill = rating_level)+
   stat_summary(fun = "mean", geom = "bar", position = "dodge")+
   stat_summary(fun.data = "mean_se", geom = "errorbar", position = "dodge", size = 0.3)+
   scale_fill_manual(values = wesanderson::wes_palette("Darjeeling1"))+
-  facet_wrap(~Restaurant, nrow = 1)+
-  labs(x = "", y = "LDA score", title = "")+
+  labs(x = "", y = "LDA score", title = "Restaurant Pondus")+
   theme_minimal()
 
 ```
 
-# ----------------------- MODELLING - DONT KNOW IF THIS IS CORRECT -------------------------------------------------
+# ---------------------------------------------- MODELLING -------------------------------------------------
 
 ```{r}
 # Trying to model whether there is a difference between cities
-model_df <- df %>% filter(rating_level != "neutral") %>% 
-  pivot_longer(cols = c("Service","Food","Atmosphere","Location","Price"), names_to = "Category")
-
-# Doing an lm
-m1 <- lm(value ~ 1 + city + Category + rating_level, data = model_df)
+m1 <- lmer(rating ~ 0 + Atmosphere*Food*Location*Price*Service + (1|city), data = df, REML = T)
 summary(m1)
-```
-
-
-```{r}
-# Doing an lmer
-m2 <- lmer(value ~ 1 + city + Category + (1 + city + Category|rating_level), data = model_df)
-
-
 ```
 
 

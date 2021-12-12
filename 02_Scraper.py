@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 import time
 import glob
 
+# List all .txt files to loop through
 files = glob.glob("./url_lists/*.txt", )
 # Removing cities that have already been scraped
 cities_already_scraped = ["./url_lists/urls_København.txt","./url_lists/urls_Kolding.txt","./url_lists/urls_Silkeborg.txt"]
@@ -89,7 +90,7 @@ for file in files:
                 url = 'https://www.tripadvisor.com' + unModifiedUrl
             except:
                 nextPage = False
-    # Adding to the enumerater
+    # Adding to the enumerator
     c +=1
 
 

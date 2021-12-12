@@ -6,13 +6,11 @@ from selenium.webdriver.chrome.options import Options
 import time
 import glob
 
-#files = glob.glob("./url_lists/*.txt", )
+files = glob.glob("./url_lists/*.txt", )
 # Removing cities that have already been scraped
-#cities_already_scraped = ["./url_lists/urls_København.txt","./url_lists/urls_Kolding.txt","./url_lists/urls_Silkeborg.txt"]
+cities_already_scraped = ["./url_lists/urls_København.txt","./url_lists/urls_Kolding.txt","./url_lists/urls_Silkeborg.txt"]
 # Looping through the list and removing elements that match
-#files = [ele for ele in files if ele not in cities_already_scraped]
-
-files = ["./url_lists/urls_Silkeborg.txt"]
+files = [ele for ele in files if ele not in cities_already_scraped]
 
 # Initializing the webdriver
 options = Options()
